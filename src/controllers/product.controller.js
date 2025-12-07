@@ -84,7 +84,13 @@ export const getAllProductsModeration = async (req, res) => {
         },
         {
           model: Report,
-          attributes: ["id", "type", "description", "status", "createdAt"],
+          attributes: [
+            "id",
+            "typeReport",
+            "description",
+            "status",
+            "dateReport",
+          ],
           required: false,
         },
       ],
