@@ -58,12 +58,10 @@ export const getIncidenceById = async (req, res) => {
     res.json(incidence);
   } catch (error) {
     console.error("Error en getIncidenceById:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener la incidencia",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener la incidencia",
+      error: error.message,
+    });
   }
 };
 
@@ -74,12 +72,10 @@ export const getIncidencesByUser = async (req, res) => {
     res.json(incidences);
   } catch (error) {
     console.error("Error en getIncidencesByUser:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener incidencias del usuario",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener incidencias del usuario",
+      error: error.message,
+    });
   }
 };
 
@@ -315,7 +311,8 @@ export const updateIncidence = async (req, res) => {
       const product = await Product.findByPk(incidence.productId);
       if (product) {
         // Verificar si esta incidencia viene de una apelación
-        const isAppealReview = incidence.isAppealReview || false;
+        // Buscamos si existe un appealId asociado para saber si es revisión de apelación
+        const isAppealReview = incidence.appealId ? true : false;
 
         switch (resolution) {
           case "approved":
@@ -422,12 +419,10 @@ export const updateIncidence = async (req, res) => {
     res.json({ message: "Incidencia actualizada", incidence });
   } catch (error) {
     console.error("Error en updateIncidence:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al actualizar incidencia",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al actualizar incidencia",
+      error: error.message,
+    });
   }
 };
 
