@@ -11,7 +11,9 @@ const options = {
     },
     servers: [
       {
-        url: `http://${process.env.URL || "localhost"}:${process.env.PORT_SWAGGER||process.env.PORT || 4000}`,
+        url: `http://${process.env.URL || "20.48.177.225"}:${
+          process.env.PORT_SWAGGER || process.env.PORT || 4000
+        }`,
       },
     ],
     components: {
@@ -34,4 +36,4 @@ const options = {
 
 const swaggerSpec = swaggerJSDoc(options);
 
-export { swaggerUi, swaggerSpec };
+export { swaggerSpec, swaggerUi };
