@@ -94,7 +94,7 @@ export const getAllProductsModeration = async (req, res) => {
           required: false,
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [["id", "DESC"]],
     });
 
     console.log(
