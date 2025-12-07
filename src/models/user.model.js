@@ -13,6 +13,7 @@ const User = sequelize.define("User", {
   rating: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 0 },
   ratingCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   verified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  status: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }, // true=activo, false=suspendido
 }, {
   tableName: "users",
   timestamps: false,
