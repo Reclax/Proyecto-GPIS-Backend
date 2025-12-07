@@ -384,6 +384,14 @@ export const updateProductModeration = async (req, res) => {
     const previousModerationStatus = product.moderationStatus;
     await product.update({ moderationStatus });
 
+    // Si se marca como permanently_suspended, también cambiar status a 'restricted'
+    if (moderationStatus === "permanently_suspended") {
+      await product.update({ status: "restricted" });
+      console.log(
+        `✅ Producto ${productId} marcado como permanently_suspended y status cambiado a 'restricted'`
+      );
+    }
+
     // Crear incidencia automáticamente cuando se cambia a 'review' o 'block'
     // Solo crear si es un cambio nuevo (no si ya existía una incidencia para este estado)
     if (
