@@ -74,7 +74,7 @@ export const getAllProductsModeration = async (req, res) => {
         { model: ProductPhoto, required: false },
         {
           model: User,
-          attributes: ["id", "name", "surname", "email"],
+          attributes: ["id", "name", "lastname", "email"],
           required: false,
         },
         {
