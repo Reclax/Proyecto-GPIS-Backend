@@ -236,29 +236,42 @@ export const updateIncidence = async (req, res) => {
       // Actualizar el producto según la resolución
       const product = await Product.findByPk(incidence.productId);
       if (product) {
+        // Verificar si esta incidencia viene de una apelación
+        const isAppealReview = incidence.isAppealReview || false;
+        
         switch (resolution) {
           case 'approved':
-            // Quitar suspensión
+            // Quitar suspensión - producto vuelve a estar activo
             await product.update({
               moderationStatus: 'active',
               status: 'active'
             });
             break;
           case 'rejected':
-            // Rechazar sin suspender
+            // Rechazar - producto vuelve a estar activo (primera decisión rechaza el reporte)
             await product.update({
-              moderationStatus: 'rejected'
+              moderationStatus: 'active',
+              status: 'active'
             });
             break;
           case 'suspended':
-            // Suspender temporalmente
-            await product.update({
-              moderationStatus: 'suspended',
-              status: 'inactive'
-            });
+            // Primera suspensión (desde reporte) - permite apelación
+            // El producto se marca como suspended pero mantiene visibilidad limitada
+            if (!isAppealReview) {
+              await product.update({
+                moderationStatus: 'suspended',
+                status: 'inactive' // Oculto pero puede apelar
+              });
+            } else {
+              // Si viene de apelación y se vuelve a suspender, es suspensión permanente
+              await product.update({
+                moderationStatus: 'permanently_suspended',
+                status: 'deleted'
+              });
+            }
             break;
           case 'permanently_suspended':
-            // Suspender permanentemente (eliminación lógica)
+            // Suspender permanentemente (eliminación lógica) - solo desde apelación
             await product.update({
               moderationStatus: 'permanently_suspended',
               status: 'deleted'
@@ -271,31 +284,41 @@ export const updateIncidence = async (req, res) => {
       if (incidence.Product) {
         const sellerId = incidence.Product.sellerId;
         const productName = incidence.Product.title;
+        const isAppealReview = incidence.isAppealReview || false;
         
         let notificationTitle = '';
         let notificationMessage = '';
         
         switch (resolution) {
           case 'approved':
-            notificationTitle = 'Producto Aprobado';
-            notificationMessage = `Tu producto "${productName}" ha sido aprobado y está visible nuevamente.`;
+            notificationTitle = isAppealReview ? 'Apelación Aceptada' : 'Producto Aprobado';
+            notificationMessage = isAppealReview 
+              ? `Tu apelación sobre el producto "${productName}" ha sido aceptada. El producto está nuevamente activo.`
+              : `Tu producto "${productName}" ha sido revisado y aprobado. No se encontraron problemas.`;
             break;
           case 'rejected':
-            notificationTitle = 'Producto Rechazado';
-            notificationMessage = `Tu producto "${productName}" ha sido rechazado. ${resolutionNotes || ''}`;
+            notificationTitle = isAppealReview ? 'Apelación Rechazada' : 'Reporte Rechazado';
+            notificationMessage = isAppealReview
+              ? `Tu apelación sobre el producto "${productName}" ha sido rechazada. El producto permanece suspendido.`
+              : `El reporte sobre tu producto "${productName}" fue rechazado. Tu producto está activo.`;
             break;
           case 'suspended':
-            notificationTitle = 'Producto Suspendido';
-            notificationMessage = `Tu producto "${productName}" ha sido suspendido temporalmente. Puedes apelar esta decisión desde "Mis Productos".`;
+            if (!isAppealReview) {
+              notificationTitle = 'Producto Suspendido Temporalmente';
+              notificationMessage = `Tu producto "${productName}" ha sido suspendido temporalmente por violar las políticas. Puedes apelar esta decisión desde "Mis Productos" antes de [FECHA]. Si no apelas, la suspensión se volverá permanente.`;
+            } else {
+              notificationTitle = 'Producto Suspendido Permanentemente';
+              notificationMessage = `Tu apelación sobre "${productName}" fue rechazada. El producto ha sido suspendido permanentemente. Esta decisión no se puede apelar.`;
+            }
             break;
           case 'permanently_suspended':
             notificationTitle = 'Producto Eliminado Permanentemente';
-            notificationMessage = `Tu producto "${productName}" ha sido eliminado permanentemente por violar las políticas de la plataforma. Esta decisión no se puede apelar.`;
+            notificationMessage = `Tu producto "${productName}" ha sido eliminado permanentemente por violar gravemente las políticas de la plataforma. Esta decisión no se puede apelar.`;
             break;
         }
 
-        if (resolutionNotes) {
-          notificationMessage += ` Observaciones: ${resolutionNotes}`;
+        if (resolutionNotes && !notificationMessage.includes('Observaciones')) {
+          notificationMessage += ` Observaciones del moderador: ${resolutionNotes}`;
         }
 
         const notification = await Notification.create({

@@ -47,10 +47,32 @@ export const createAppeal = async (req, res) => {
     const incidence = await Incidence.findByPk(incidenceId);
     if (!incidence) return res.status(404).json({ message: "Incidencia relacionada no encontrada" });
 
+    // Verificar que la incidencia esté resuelta y tenga resolución 'suspended'
+    if (incidence.status !== 'resolved' || incidence.resolution !== 'suspended') {
+      return res.status(400).json({ 
+        message: "Solo se pueden apelar incidencias resueltas con suspensión temporal" 
+      });
+    }
+
+    // Verificar que no exista ya una apelación para esta incidencia
+    const existingAppeal = await Appeal.findOne({ 
+      where: { 
+        incidenceId,
+        status: ['pending', 'converted_to_incidence'] 
+      } 
+    });
+    
+    if (existingAppeal) {
+      return res.status(400).json({ 
+        message: "Ya existe una apelación activa para esta incidencia" 
+      });
+    }
+
     const appealData = {
       incidenceId,
       description: message, // El modelo usa 'description' no 'message'
-      dateAppeals: new Date() // Fecha actual
+      dateAppeals: new Date(), // Fecha actual
+      status: 'pending'
     };
     
     console.log('📝 Datos a insertar en DB:', appealData);
@@ -60,7 +82,7 @@ export const createAppeal = async (req, res) => {
     
     console.log('✅ Apelación creada:', appeal.toJSON());
 
-    res.status(201).json({ message: "Apelación creada", appeal });
+    res.status(201).json({ message: "Apelación creada exitosamente. Espera a que sea revisada por otro moderador.", appeal });
   } catch (error) {
     console.error("❌ Error en createAppeal:", error);
     res.status(500).json({ message: "Error al crear apelación", error: error.message });
