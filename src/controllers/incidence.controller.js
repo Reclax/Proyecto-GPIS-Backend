@@ -316,29 +316,37 @@ export const updateIncidence = async (req, res) => {
 
         switch (resolution) {
           case "approved":
-            // Quitar suspensión - producto vuelve a estar activo
+            // Aprobar - producto vuelve a estar activo (acepta apelación o rechaza reporte inicial)
             await product.update({
               moderationStatus: "active",
               status: "active",
             });
             break;
           case "rejected":
-            // Rechazar - producto vuelve a estar activo (primera decisión rechaza el reporte)
-            await product.update({
-              moderationStatus: "active",
-              status: "active",
-            });
+            // Rechazar tiene diferentes significados según el contexto
+            if (!isAppealReview) {
+              // Primera decisión: rechazar el reporte = producto vuelve activo
+              await product.update({
+                moderationStatus: "active",
+                status: "active",
+              });
+            } else {
+              // Apelación: rechazar apelación = bloqueo permanente
+              await product.update({
+                moderationStatus: "blocked",
+                status: "deleted",
+              });
+            }
             break;
           case "suspended":
-            // Primera suspensión (desde reporte) - permite apelación
-            // El producto se marca como suspended pero mantiene visibilidad limitada
+            // Suspender solo se usa en primera decisión
             if (!isAppealReview) {
               await product.update({
                 moderationStatus: "suspended",
                 status: "inactive", // Oculto pero puede apelar
               });
             } else {
-              // Si viene de apelación y se vuelve a suspender, es bloqueo permanente
+              // Si es apelación y se suspende nuevamente, es bloqueo permanente
               await product.update({
                 moderationStatus: "blocked",
                 status: "deleted",
@@ -346,7 +354,7 @@ export const updateIncidence = async (req, res) => {
             }
             break;
           case "permanently_suspended":
-            // Suspender permanentemente (eliminación lógica) - solo desde apelación
+            // Bloqueo permanente directo
             await product.update({
               moderationStatus: "blocked",
               status: "deleted",
