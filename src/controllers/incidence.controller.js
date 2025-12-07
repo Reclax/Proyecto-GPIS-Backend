@@ -334,7 +334,7 @@ export const updateIncidence = async (req, res) => {
               // Apelación: rechazar apelación = bloqueo permanente
               // Usar valores que existen en los ENUMs
               await product.update({
-                moderationStatus: "suspended",
+                moderationStatus: "permanently_suspended",
                 status: "restricted",
               });
             }
@@ -350,7 +350,7 @@ export const updateIncidence = async (req, res) => {
               // Si es apelación y se suspende nuevamente, es bloqueo permanente
               // Usar valores que existen en los ENUMs
               await product.update({
-                moderationStatus: "suspended",
+                moderationStatus: "permanently_suspended",
                 status: "restricted",
               });
             }
@@ -359,7 +359,7 @@ export const updateIncidence = async (req, res) => {
             // Bloqueo permanente directo
             // Usar valores que existen en los ENUMs
             await product.update({
-              moderationStatus: "suspended",
+              moderationStatus: "permanently_suspended",
               status: "restricted",
             });
             break;
