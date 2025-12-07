@@ -1,4 +1,11 @@
-import { Incidence, Product, ProductPhoto, User, Appeal, Notification } from "../models/index.js";
+import {
+  Appeal,
+  Incidence,
+  Notification,
+  Product,
+  ProductPhoto,
+  User,
+} from "../models/index.js";
 import { emitNotificationToUsers } from "../utils/websocket-emitter.js";
 
 export const getAllIncidences = async (req, res) => {
@@ -7,22 +14,24 @@ export const getAllIncidences = async (req, res) => {
       include: [
         {
           model: Product,
-          include: [{ model: ProductPhoto }]
+          include: [{ model: ProductPhoto }],
         },
         {
           model: User,
-          attributes: ['id', 'name', 'lastname', 'email']
+          attributes: ["id", "name", "lastname", "email"],
         },
         {
           model: Appeal,
-          attributes: ['id', 'dateAppeals', 'description', 'incidenceId']
-        }
-      ]
+          attributes: ["id", "dateAppeals", "description", "incidenceId"],
+        },
+      ],
     });
     res.json(incidences);
   } catch (error) {
     console.error("Error en getAllIncidences:", error);
-    res.status(500).json({ message: "Error al obtener incidencias", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error al obtener incidencias", error: error.message });
   }
 };
 
@@ -32,23 +41,29 @@ export const getIncidenceById = async (req, res) => {
       include: [
         {
           model: Product,
-          include: [{ model: ProductPhoto }]
+          include: [{ model: ProductPhoto }],
         },
         {
           model: User,
-          attributes: ['id', 'name', 'lastname', 'email']
+          attributes: ["id", "name", "lastname", "email"],
         },
         {
           model: Appeal,
-          attributes: ['id', 'dateAppeals', 'description', 'incidenceId']
-        }
-      ]
+          attributes: ["id", "dateAppeals", "description", "incidenceId"],
+        },
+      ],
     });
-    if (!incidence) return res.status(404).json({ message: "Incidencia no encontrada" });
+    if (!incidence)
+      return res.status(404).json({ message: "Incidencia no encontrada" });
     res.json(incidence);
   } catch (error) {
     console.error("Error en getIncidenceById:", error);
-    res.status(500).json({ message: "Error al obtener la incidencia", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener la incidencia",
+        error: error.message,
+      });
   }
 };
 
@@ -59,20 +74,47 @@ export const getIncidencesByUser = async (req, res) => {
     res.json(incidences);
   } catch (error) {
     console.error("Error en getIncidencesByUser:", error);
-    res.status(500).json({ message: "Error al obtener incidencias del usuario", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener incidencias del usuario",
+        error: error.message,
+      });
   }
 };
 
 export const createIncidence = async (req, res) => {
   try {
-    const { description, userId, productId, status, assignedByAdminId, reportCount, reportId, appealId, isAppealReview } = req.body;
+    const {
+      description,
+      userId,
+      productId,
+      status,
+      assignedByAdminId,
+      reportCount,
+      reportId,
+      appealId,
+      isAppealReview,
+    } = req.body;
 
-    console.log('=== CREANDO INCIDENCIA ===');
-    console.log('Datos recibidos:', { description, userId, productId, status, assignedByAdminId, reportCount, reportId, appealId, isAppealReview });
+    console.log("=== CREANDO INCIDENCIA ===");
+    console.log("Datos recibidos:", {
+      description,
+      userId,
+      productId,
+      status,
+      assignedByAdminId,
+      reportCount,
+      reportId,
+      appealId,
+      isAppealReview,
+    });
 
     if (!description || !userId || !productId) {
-      console.error('Faltan campos requeridos');
-      return res.status(400).json({ message: "description, userId y productId son requeridos" });
+      console.error("Faltan campos requeridos");
+      return res
+        .status(400)
+        .json({ message: "description, userId y productId son requeridos" });
     }
 
     // Obtener información del producto y vendedor ANTES de crear la incidencia
@@ -82,10 +124,10 @@ export const createIncidence = async (req, res) => {
 
     // Si hay 5 o más reportes, suspender automáticamente
     const shouldAutoSuspend = reportCount >= 5;
-    
+
     const incidence = await Incidence.create({
       dateIncidence: new Date(),
-      description: shouldAutoSuspend 
+      description: shouldAutoSuspend
         ? `${description} [AUTO-SUSPENDIDO: ${reportCount} reportes]`
         : description,
       userId, // moderador/administrador asignado
@@ -93,43 +135,49 @@ export const createIncidence = async (req, res) => {
       reportId: reportId || null,
       appealId: appealId || null,
       isAppealReview: isAppealReview || false,
-      status: shouldAutoSuspend ? "resolved" : (status || "pending"),
+      status: shouldAutoSuspend ? "resolved" : status || "pending",
       resolution: shouldAutoSuspend ? "suspended" : null,
-      resolutionNotes: shouldAutoSuspend 
+      resolutionNotes: shouldAutoSuspend
         ? `Producto suspendido automáticamente por recibir ${reportCount} reportes. Revisión necesaria antes de reactivar.`
         : null,
-      resolvedAt: shouldAutoSuspend ? new Date() : null
+      resolvedAt: shouldAutoSuspend ? new Date() : null,
     });
 
-    console.log('✅ Incidencia creada:', incidence.toJSON());
+    console.log("✅ Incidencia creada:", incidence.toJSON());
 
     // Si se creó desde un reporte, actualizar el reporte
     if (reportId) {
       await Report.update(
-        { status: 'converted_to_incidence', incidenceId: incidence.id },
+        { status: "converted_to_incidence", incidenceId: incidence.id },
         { where: { id: reportId } }
       );
-      console.log(`✅ Reporte ${reportId} marcado como convertido a incidencia`);
+      console.log(
+        `✅ Reporte ${reportId} marcado como convertido a incidencia`
+      );
     }
 
     // Si se creó desde una apelación, actualizar la apelación
     if (appealId) {
       await Appeal.update(
-        { status: 'converted_to_incidence', newIncidenceId: incidence.id },
+        { status: "converted_to_incidence", newIncidenceId: incidence.id },
         { where: { id: appealId } }
       );
-      console.log(`✅ Apelación ${appealId} marcada como convertida a incidencia`);
+      console.log(
+        `✅ Apelación ${appealId} marcada como convertida a incidencia`
+      );
     }
 
     // Actualizar estado del producto
     if (shouldAutoSuspend) {
       await product.update({
-        moderationStatus: 'suspended',
-        status: 'inactive'
+        moderationStatus: "suspended",
+        status: "inactive",
       });
-      console.log(`🔒 Producto ${productId} SUSPENDIDO automáticamente por ${reportCount} reportes`);
+      console.log(
+        `🔒 Producto ${productId} SUSPENDIDO automáticamente por ${reportCount} reportes`
+      );
     } else {
-      await product.update({ moderationStatus: 'review' });
+      await product.update({ moderationStatus: "review" });
     }
 
     // 1. Notificar al VENDEDOR
@@ -142,93 +190,123 @@ export const createIncidence = async (req, res) => {
         const sellerNotification = await Notification.create({
           userId: sellerId,
           typeId: 2, // Alerta
-          title: shouldAutoSuspend ? 'Producto suspendido' : 'Producto en revisión',
+          title: shouldAutoSuspend
+            ? "Producto suspendido"
+            : "Producto en revisión",
           message: sellerMessage,
           read: false,
-          productId: productId
+          productId: productId,
         });
 
         emitNotificationToUsers(sellerId, sellerNotification.toJSON());
         console.log(`📬 Notificación enviada al vendedor ${sellerId}`);
       } catch (notifError) {
-        console.error('Error al enviar notificación al vendedor:', notifError);
+        console.error("Error al enviar notificación al vendedor:", notifError);
       }
     }
 
     // 2. Si fue asignado por un admin (y NO es auto-suspendido), notificar al moderador
-    if (assignedByAdminId && assignedByAdminId !== userId && !shouldAutoSuspend) {
+    if (
+      assignedByAdminId &&
+      assignedByAdminId !== userId &&
+      !shouldAutoSuspend
+    ) {
       try {
         const notification = await Notification.create({
           userId: userId, // Moderador asignado
           typeId: 2, // Alerta
-          title: 'Nueva incidencia asignada',
+          title: "Nueva incidencia asignada",
           message: `Se te ha asignado una incidencia para revisar el producto "${productTitle}". Incidencia #${incidence.id}`,
           read: false,
-          productId: productId
+          productId: productId,
         });
 
         emitNotificationToUsers(userId, notification.toJSON());
-        console.log(`📬 Notificación enviada al moderador ${userId} por asignación`);
+        console.log(
+          `📬 Notificación enviada al moderador ${userId} por asignación`
+        );
       } catch (notifError) {
-        console.error('Error al enviar notificación de asignación:', notifError);
+        console.error(
+          "Error al enviar notificación de asignación:",
+          notifError
+        );
       }
     }
 
-    res.status(201).json({ 
-      message: shouldAutoSuspend ? "Incidencia creada y producto auto-suspendido" : "Incidencia creada", 
+    res.status(201).json({
+      message: shouldAutoSuspend
+        ? "Incidencia creada y producto auto-suspendido"
+        : "Incidencia creada",
       incidence,
-      autoSuspended: shouldAutoSuspend
+      autoSuspended: shouldAutoSuspend,
     });
   } catch (error) {
     console.error("❌ Error en createIncidence:", error);
-    res.status(500).json({ message: "Error al crear incidencia", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error al crear incidencia", error: error.message });
   }
 };
 
 export const updateIncidence = async (req, res) => {
   try {
     const incidenceId = req.params.id;
-    const { description, status, productId, userId, resolution, resolutionNotes } = req.body;
+    const {
+      description,
+      status,
+      productId,
+      userId,
+      resolution,
+      resolutionNotes,
+    } = req.body;
 
     const incidence = await Incidence.findByPk(incidenceId, {
-      include: [{ model: Product }]
+      include: [{ model: Product }],
     });
-    if (!incidence) return res.status(404).json({ message: "Incidencia no encontrada" });
+    if (!incidence)
+      return res.status(404).json({ message: "Incidencia no encontrada" });
 
     const previousStatus = incidence.status;
 
     // Preparar datos de actualización
     const updateData = {
-      description: description !== undefined ? description : incidence.description,
+      description:
+        description !== undefined ? description : incidence.description,
       status: status !== undefined ? status : incidence.status,
       productId: productId !== undefined ? productId : incidence.productId,
       userId: userId !== undefined ? userId : incidence.userId,
     };
 
     // Notificar al vendedor cuando cambia de "pending" a "in_progress"
-    if (previousStatus === 'pending' && status === 'in_progress' && incidence.Product) {
+    if (
+      previousStatus === "pending" &&
+      status === "in_progress" &&
+      incidence.Product
+    ) {
       try {
         const sellerId = incidence.Product.sellerId;
         const productName = incidence.Product.title;
-        
+
         const notification = await Notification.create({
           userId: sellerId,
           typeId: 2,
-          title: 'Producto en revisión',
+          title: "Producto en revisión",
           message: `Un moderador está revisando tu producto "${productName}". Incidencia #${incidenceId}`,
           read: false,
-          productId: incidence.productId
+          productId: incidence.productId,
         });
 
         emitNotificationToUsers(sellerId, notification.toJSON());
-        console.log(`📬 Notificación enviada al vendedor ${sellerId} - Incidencia en revisión`);
+        console.log(
+          `📬 Notificación enviada al vendedor ${sellerId} - Incidencia en revisión`
+        );
       } catch (notifError) {
-        console.error('Error al notificar cambio a en_revision:', notifError);
+        console.error("Error al notificar cambio a en_revision:", notifError);
       }
     }
 
     // Si se está resolviendo la incidencia
-    if (status === 'resolved' && resolution) {
+    if (status === "resolved" && resolution) {
       updateData.resolution = resolution;
       updateData.resolutionNotes = resolutionNotes || null;
       updateData.resolvedAt = new Date();
@@ -238,43 +316,43 @@ export const updateIncidence = async (req, res) => {
       if (product) {
         // Verificar si esta incidencia viene de una apelación
         const isAppealReview = incidence.isAppealReview || false;
-        
+
         switch (resolution) {
-          case 'approved':
+          case "approved":
             // Quitar suspensión - producto vuelve a estar activo
             await product.update({
-              moderationStatus: 'active',
-              status: 'active'
+              moderationStatus: "active",
+              status: "active",
             });
             break;
-          case 'rejected':
+          case "rejected":
             // Rechazar - producto vuelve a estar activo (primera decisión rechaza el reporte)
             await product.update({
-              moderationStatus: 'active',
-              status: 'active'
+              moderationStatus: "active",
+              status: "active",
             });
             break;
-          case 'suspended':
+          case "suspended":
             // Primera suspensión (desde reporte) - permite apelación
             // El producto se marca como suspended pero mantiene visibilidad limitada
             if (!isAppealReview) {
               await product.update({
-                moderationStatus: 'suspended',
-                status: 'inactive' // Oculto pero puede apelar
+                moderationStatus: "suspended",
+                status: "inactive", // Oculto pero puede apelar
               });
             } else {
-              // Si viene de apelación y se vuelve a suspender, es suspensión permanente
+              // Si viene de apelación y se vuelve a suspender, es bloqueo permanente
               await product.update({
-                moderationStatus: 'permanently_suspended',
-                status: 'deleted'
+                moderationStatus: "blocked",
+                status: "deleted",
               });
             }
             break;
-          case 'permanently_suspended':
+          case "permanently_suspended":
             // Suspender permanentemente (eliminación lógica) - solo desde apelación
             await product.update({
-              moderationStatus: 'permanently_suspended',
-              status: 'deleted'
+              moderationStatus: "blocked",
+              status: "deleted",
             });
             break;
         }
@@ -285,39 +363,43 @@ export const updateIncidence = async (req, res) => {
         const sellerId = incidence.Product.sellerId;
         const productName = incidence.Product.title;
         const isAppealReview = incidence.isAppealReview || false;
-        
-        let notificationTitle = '';
-        let notificationMessage = '';
-        
+
+        let notificationTitle = "";
+        let notificationMessage = "";
+
         switch (resolution) {
-          case 'approved':
-            notificationTitle = isAppealReview ? 'Apelación Aceptada' : 'Producto Aprobado';
-            notificationMessage = isAppealReview 
+          case "approved":
+            notificationTitle = isAppealReview
+              ? "Apelación Aceptada"
+              : "Producto Aprobado";
+            notificationMessage = isAppealReview
               ? `Tu apelación sobre el producto "${productName}" ha sido aceptada. El producto está nuevamente activo.`
               : `Tu producto "${productName}" ha sido revisado y aprobado. No se encontraron problemas.`;
             break;
-          case 'rejected':
-            notificationTitle = isAppealReview ? 'Apelación Rechazada' : 'Reporte Rechazado';
+          case "rejected":
+            notificationTitle = isAppealReview
+              ? "Apelación Rechazada"
+              : "Reporte Rechazado";
             notificationMessage = isAppealReview
               ? `Tu apelación sobre el producto "${productName}" ha sido rechazada. El producto permanece suspendido.`
               : `El reporte sobre tu producto "${productName}" fue rechazado. Tu producto está activo.`;
             break;
-          case 'suspended':
+          case "suspended":
             if (!isAppealReview) {
-              notificationTitle = 'Producto Suspendido Temporalmente';
+              notificationTitle = "Producto Suspendido Temporalmente";
               notificationMessage = `Tu producto "${productName}" ha sido suspendido temporalmente por violar las políticas. Puedes apelar esta decisión desde "Mis Productos" antes de [FECHA]. Si no apelas, la suspensión se volverá permanente.`;
             } else {
-              notificationTitle = 'Producto Suspendido Permanentemente';
+              notificationTitle = "Producto Suspendido Permanentemente";
               notificationMessage = `Tu apelación sobre "${productName}" fue rechazada. El producto ha sido suspendido permanentemente. Esta decisión no se puede apelar.`;
             }
             break;
-          case 'permanently_suspended':
-            notificationTitle = 'Producto Eliminado Permanentemente';
+          case "permanently_suspended":
+            notificationTitle = "Producto Eliminado Permanentemente";
             notificationMessage = `Tu producto "${productName}" ha sido eliminado permanentemente por violar gravemente las políticas de la plataforma. Esta decisión no se puede apelar.`;
             break;
         }
 
-        if (resolutionNotes && !notificationMessage.includes('Observaciones')) {
+        if (resolutionNotes && !notificationMessage.includes("Observaciones")) {
           notificationMessage += ` Observaciones del moderador: ${resolutionNotes}`;
         }
 
@@ -327,7 +409,7 @@ export const updateIncidence = async (req, res) => {
           title: notificationTitle,
           message: notificationMessage,
           read: false,
-          productId: incidence.productId
+          productId: incidence.productId,
         });
 
         // Emitir notificación en tiempo real vía WebSocket
@@ -340,7 +422,12 @@ export const updateIncidence = async (req, res) => {
     res.json({ message: "Incidencia actualizada", incidence });
   } catch (error) {
     console.error("Error en updateIncidence:", error);
-    res.status(500).json({ message: "Error al actualizar incidencia", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al actualizar incidencia",
+        error: error.message,
+      });
   }
 };
 
@@ -348,12 +435,15 @@ export const deleteIncidence = async (req, res) => {
   try {
     const incidenceId = req.params.id;
     const incidence = await Incidence.findByPk(incidenceId);
-    if (!incidence) return res.status(404).json({ message: "Incidencia no encontrada" });
+    if (!incidence)
+      return res.status(404).json({ message: "Incidencia no encontrada" });
 
     await incidence.destroy();
     res.json({ message: "Incidencia eliminada", incidence });
   } catch (error) {
     console.error("Error en deleteIncidence:", error);
-    res.status(500).json({ message: "Error al eliminar incidencia", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error al eliminar incidencia", error: error.message });
   }
 };
