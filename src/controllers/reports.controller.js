@@ -4,10 +4,20 @@ import { emitNotificationToUsers } from "../utils/websocket-emitter.js";
 export const getAllReports = async (req, res) => {
   try {
     const reports = await Report.findAll();
-    res.json(reports);
+    res.json({
+      success: true,
+      payload: reports,
+      data: reports // Para compatibilidad
+    });
   } catch (error) {
     console.error("Error en getAllReports:", error);
-    res.status(500).json({ message: "Error al obtener reportes", error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: "Error al obtener reportes", 
+      error: error.message,
+      payload: [],
+      data: []
+    });
   }
 };
 
