@@ -332,9 +332,10 @@ export const updateIncidence = async (req, res) => {
               });
             } else {
               // Apelación: rechazar apelación = bloqueo permanente
+              // Usar valores que existen en los ENUMs
               await product.update({
-                moderationStatus: "blocked",
-                status: "deleted",
+                moderationStatus: "suspended",
+                status: "restricted",
               });
             }
             break;
@@ -347,17 +348,19 @@ export const updateIncidence = async (req, res) => {
               });
             } else {
               // Si es apelación y se suspende nuevamente, es bloqueo permanente
+              // Usar valores que existen en los ENUMs
               await product.update({
-                moderationStatus: "blocked",
-                status: "deleted",
+                moderationStatus: "suspended",
+                status: "restricted",
               });
             }
             break;
           case "permanently_suspended":
             // Bloqueo permanente directo
+            // Usar valores que existen en los ENUMs
             await product.update({
-              moderationStatus: "blocked",
-              status: "deleted",
+              moderationStatus: "suspended",
+              status: "restricted",
             });
             break;
         }
