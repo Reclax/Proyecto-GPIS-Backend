@@ -71,7 +71,7 @@ export const getAllProductsModeration = async (req, res) => {
 
     const products = await Product.findAll({
       include: [
-        { model: ProductPhoto },
+        { model: ProductPhoto, required: false },
         {
           model: User,
           attributes: ["id", "name", "surname", "email"],
@@ -90,14 +90,18 @@ export const getAllProductsModeration = async (req, res) => {
       ],
       order: [["createdAt", "DESC"]],
     });
+
+    console.log(
+      `[getAllProductsModeration] Se encontraron ${products.length} productos`
+    );
     res.json(products);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al recuperar productos (moderación)",
-        error: error.message,
-      });
+    console.error("[getAllProductsModeration] Error:", error);
+    res.status(500).json({
+      message: "Error al recuperar productos (moderación)",
+      error: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
   }
 };
 
@@ -164,12 +168,10 @@ export const getMyProducts = async (req, res) => {
 
     res.json(mappedProducts);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al recuperar mis productos",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al recuperar mis productos",
+      error: error.message,
+    });
   }
 };
 
@@ -367,12 +369,10 @@ export const updateProductModeration = async (req, res) => {
     const isModerador = req.user?.roles?.includes("Moderador");
 
     if (!isAdmin && !isModerador) {
-      return res
-        .status(403)
-        .json({
-          message:
-            "No autorizado: solo administradores y moderadores pueden modificar moderationStatus",
-        });
+      return res.status(403).json({
+        message:
+          "No autorizado: solo administradores y moderadores pueden modificar moderationStatus",
+      });
     }
 
     const previousModerationStatus = product.moderationStatus;
@@ -446,12 +446,10 @@ export const updateProductModeration = async (req, res) => {
     });
   } catch (error) {
     console.error("Error en updateProductModeration:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al actualizar moderationStatus",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al actualizar moderationStatus",
+      error: error.message,
+    });
   }
 };
 
